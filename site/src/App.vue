@@ -1,8 +1,11 @@
 <script setup lang="ts">
+import { useTheme } from "vuetify";
 import { ref } from "vue";
 import { marked } from "marked";
 import readme from "../../README.md?raw";
 import plan from "../../PLAN.md?raw";
+const theme = useTheme();
+const toggleTheme = () => { theme.global.name.value = theme.global.current.value.dark ? "light" : "dark"; };
 const logo = import.meta.env.BASE_URL + "gad.svg";
 const tab = ref("overview");
 const readmeHtml = marked.parse(readme) as string;
@@ -16,6 +19,7 @@ const planHtml = marked.parse(plan) as string;
         intellij-gad
       </v-app-bar-title>
       <v-spacer />
+      <v-btn :icon="theme.global.current.value.dark ? 'mdi-weather-sunny' : 'mdi-weather-night'" @click="toggleTheme" variant="text" title="Toggle theme" />
       <v-btn href="https://github.com/gad-lang/intellij-gad" icon="mdi-github" variant="text" />
     </v-app-bar>
     <v-main>
