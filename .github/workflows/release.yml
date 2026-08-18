@@ -17,6 +17,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # The TextMate grammars (syntax highlighting) live in the sibling vscode-gad
+      # repo. Check it out inside the workspace and point the Gradle build at it
+      # with -PvscodeDir below; without this the plugin ships with no highlighting.
+      - name: Check out vscode-gad grammars
+        uses: actions/checkout@v4
+        with:
+          repository: gad-lang/vscode-gad
+          path: .vscode-gad
+
       - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
@@ -31,7 +40,7 @@ jobs:
       # No -PlocalIdePath: the build downloads the configured IntelliJ Platform
       # (IDEA Community) and produces build/distributions/<name>-<version>.zip.
       - name: Build plugin
-        run: ./gradlew buildPlugin -PpluginVersion=${{ steps.version.outputs.value }} --console=plain --no-daemon
+        run: ./gradlew buildPlugin -PpluginVersion=${{ steps.version.outputs.value }} -PvscodeDir=.vscode-gad --console=plain --no-daemon
 
       - name: List artifacts
         run: ls -l build/distributions
