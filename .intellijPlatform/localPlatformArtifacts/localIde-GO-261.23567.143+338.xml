@@ -1,0 +1,10 @@
+<ivy-module version="2.0">
+  <info organisation="localIde" module="GO" revision="261.23567.143+338"/>
+  <configurations>
+    <conf name="default" visibility="public"/>
+  </configurations>
+  <publications>
+    <artifact name="/mnt/MPS-WORK/work/opt/GoLand-2026.1.1" type="directory" conf="default"/>
+  </publications>
+  <dependencies/>
+</ivy-module>

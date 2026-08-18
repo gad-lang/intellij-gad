@@ -53,6 +53,33 @@ Each target just calls `./gradlew <task>` (the committed wrapper); override the
 JDK with `make JAVA_HOME=/path build`. Install the built `.zip` via *Settings ▸
 Plugins ▸ ⚙ ▸ Install Plugin from Disk*.
 
+## Releases
+
+Releases are produced automatically by the [`release`](.github/workflows/release.yml)
+GitHub Actions workflow: **push a `v*` tag** and it builds the plugin and
+publishes a GitHub Release with the plugin **`.zip` attached as a downloadable
+asset**. The tag drives the plugin version, and a tag with a pre-release suffix
+(e.g. `-rc.1`) marks the release as a pre-release.
+
+```sh
+git tag v0.1.0            # or v0.1.0-rc.1 for a pre-release
+git push origin v0.1.0
+```
+
+The workflow (no local IDE needed — it downloads the IntelliJ Platform):
+
+1. builds `build/distributions/intellij-gad-<version>.zip` with
+   `./gradlew buildPlugin -PpluginVersion=<tag>`,
+2. creates the release for the tag with auto-generated notes,
+3. uploads the `.zip` as a release asset.
+
+Download the `.zip` from the release and install it via *Settings ▸ Plugins ▸ ⚙ ▸
+Install Plugin from Disk*. The exact build is shown in *Settings ▸ Build, Execution,
+Deployment ▸ Gad ▸ About* (version, commit id + time).
+
+You can also trigger the workflow manually (**Actions ▸ release ▸ Run workflow**)
+to validate the build without publishing.
+
 ## Architecture
 
 The plugin is a thin front-end over the Gad CLI's protocols:

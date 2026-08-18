@@ -45,6 +45,9 @@
         <applicationConfigurable parentId="dev.gad.intellij.settings"
                                  instance="dev.gad.intellij.settings.GadFormattingConfigurable"
                                  id="dev.gad.intellij.settings.formatting" displayName="Formatting"/>
+        <applicationConfigurable parentId="dev.gad.intellij.settings"
+                                 instance="dev.gad.intellij.settings.GadAboutConfigurable"
+                                 id="dev.gad.intellij.settings.about" displayName="About"/>
 
         <configurationType implementation="dev.gad.intellij.run.GadRunConfigurationType"/>
         <runConfigurationProducer implementation="dev.gad.intellij.run.GadRunConfigurationProducer"/>

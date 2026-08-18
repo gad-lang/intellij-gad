@@ -10,6 +10,11 @@ const logo = import.meta.env.BASE_URL + "gad.svg";
 const tab = ref("overview");
 const readmeHtml = marked.parse(readme) as string;
 const planHtml = marked.parse(plan) as string;
+// Build info injected at build time (see vite.config.ts).
+const version = __VERSION__;
+const commit = __COMMIT__;
+const commitTime = __COMMIT_TIME__ ? new Date(__COMMIT_TIME__).toLocaleString() : "";
+const commitUrl = `https://github.com/gad-lang/intellij-gad/commit/${commit}`;
 </script>
 <template>
   <v-app>
@@ -32,6 +37,13 @@ const planHtml = marked.parse(plan) as string;
         <div v-show="tab === 'plan'" class="markdown" v-html="planHtml" />
       </v-container>
     </v-main>
+    <v-footer color="surface" class="text-caption d-flex align-center flex-wrap ga-2">
+      <span>Gad Language <strong>v{{ version }}</strong></span>
+      <span v-if="commit">· commit <a :href="commitUrl" target="_blank" rel="noopener">{{ commit }}</a></span>
+      <span v-if="commitTime">· {{ commitTime }}</span>
+      <v-spacer />
+      <a href="https://github.com/gad-lang/intellij-gad">gad-lang/intellij-gad</a>
+    </v-footer>
   </v-app>
 </template>
 <style>

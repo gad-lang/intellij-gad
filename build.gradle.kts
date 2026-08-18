@@ -1,4 +1,5 @@
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
+import java.time.OffsetDateTime
 
 plugins {
     id("java")
@@ -111,6 +112,37 @@ val copySchemas by tasks.registering(Copy::class) {
     into(layout.buildDirectory.dir("generated-resources/schemas"))
 }
 
+// Bake the plugin version and the current git commit (id + time) into a
+// properties file packaged with the plugin, so the About settings page can show
+// exactly which build is installed.
+val generateBuildInfo by tasks.registering {
+    val outFile = layout.buildDirectory.file("generated-resources/gad-build.properties")
+    val pluginVersion = providers.gradleProperty("pluginVersion")
+    outputs.file(outFile)
+    doLast {
+        fun git(vararg a: String): String = try {
+            val p = ProcessBuilder(listOf("git") + a).redirectErrorStream(true).start()
+            val s = p.inputStream.bufferedReader().readText().trim()
+            p.waitFor()
+            if (p.exitValue() == 0) s else ""
+        } catch (e: Exception) {
+            ""
+        }
+        val builtAt = OffsetDateTime.now().toString()
+        val f = outFile.get().asFile
+        f.parentFile.mkdirs()
+        f.writeText(
+            buildString {
+                appendLine("version=${pluginVersion.get()}")
+                appendLine("commit=${git("rev-parse", "HEAD")}")
+                appendLine("commitShort=${git("rev-parse", "--short", "HEAD")}")
+                appendLine("commitTime=${git("show", "-s", "--format=%cI", "HEAD")}")
+                appendLine("buildTime=$builtAt")
+            },
+        )
+    }
+}
+
 sourceSets {
     main {
         resources.srcDir(layout.buildDirectory.dir("generated-resources"))
@@ -118,7 +150,7 @@ sourceSets {
 }
 
 tasks.named("processResources") {
-    dependsOn(bundleGad, copySchemas)
+    dependsOn(bundleGad, copySchemas, generateBuildInfo)
 }
 
 // BasePlatformTestCase runs on the JUnit 4 runner (no useJUnitPlatform()).
