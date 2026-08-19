@@ -20,14 +20,17 @@ class GadSettings : SimplePersistentStateComponent<GadSettings.MyState>(MyState(
         var gadPathEnv by string("")
 
         // Formatting options — the `gad fmt` toggles. Defaults match `gad fmt`'s own
-        // defaults (multi-line formatting on, no backup).
-        var fmtNoFormat by property(false)
-        var fmtNoArrayItemNewLine by property(false)
-        var fmtNoCallParamsNewLine by property(false)
-        var fmtNoDeclItemNewLine by property(false)
-        var fmtNoDictItemNewLine by property(false)
-        var fmtNoKeyValueArrayItemNewLine by property(false)
-        var fmtNoParamValuesNewLine by property(false)
+        // defaults (column-aware wrapping, nothing forced, no backup). Each
+        // *NewLine toggle forces that construct onto separate lines; fmtFormat
+        // forces the full multi-line layout.
+        var fmtFormat by property(false)
+        var fmtArrayItemNewLine by property(false)
+        var fmtCallParamsNewLine by property(false)
+        var fmtDeclItemNewLine by property(false)
+        var fmtDictItemNewLine by property(false)
+        var fmtKeyValueArrayItemNewLine by property(false)
+        var fmtParamValuesNewLine by property(false)
+        var fmtMaxColumns by property(0) // 0 uses gad's default column budget
         var fmtBackup by property(false)
     }
 
@@ -40,40 +43,44 @@ class GadSettings : SimplePersistentStateComponent<GadSettings.MyState>(MyState(
         set(value) { state.gadPathEnv = value }
 
     // Formatting options.
-    var fmtNoFormat: Boolean
-        get() = state.fmtNoFormat
-        set(value) { state.fmtNoFormat = value }
-    var fmtNoArrayItemNewLine: Boolean
-        get() = state.fmtNoArrayItemNewLine
-        set(value) { state.fmtNoArrayItemNewLine = value }
-    var fmtNoCallParamsNewLine: Boolean
-        get() = state.fmtNoCallParamsNewLine
-        set(value) { state.fmtNoCallParamsNewLine = value }
-    var fmtNoDeclItemNewLine: Boolean
-        get() = state.fmtNoDeclItemNewLine
-        set(value) { state.fmtNoDeclItemNewLine = value }
-    var fmtNoDictItemNewLine: Boolean
-        get() = state.fmtNoDictItemNewLine
-        set(value) { state.fmtNoDictItemNewLine = value }
-    var fmtNoKeyValueArrayItemNewLine: Boolean
-        get() = state.fmtNoKeyValueArrayItemNewLine
-        set(value) { state.fmtNoKeyValueArrayItemNewLine = value }
-    var fmtNoParamValuesNewLine: Boolean
-        get() = state.fmtNoParamValuesNewLine
-        set(value) { state.fmtNoParamValuesNewLine = value }
+    var fmtFormat: Boolean
+        get() = state.fmtFormat
+        set(value) { state.fmtFormat = value }
+    var fmtArrayItemNewLine: Boolean
+        get() = state.fmtArrayItemNewLine
+        set(value) { state.fmtArrayItemNewLine = value }
+    var fmtCallParamsNewLine: Boolean
+        get() = state.fmtCallParamsNewLine
+        set(value) { state.fmtCallParamsNewLine = value }
+    var fmtDeclItemNewLine: Boolean
+        get() = state.fmtDeclItemNewLine
+        set(value) { state.fmtDeclItemNewLine = value }
+    var fmtDictItemNewLine: Boolean
+        get() = state.fmtDictItemNewLine
+        set(value) { state.fmtDictItemNewLine = value }
+    var fmtKeyValueArrayItemNewLine: Boolean
+        get() = state.fmtKeyValueArrayItemNewLine
+        set(value) { state.fmtKeyValueArrayItemNewLine = value }
+    var fmtParamValuesNewLine: Boolean
+        get() = state.fmtParamValuesNewLine
+        set(value) { state.fmtParamValuesNewLine = value }
+    var fmtMaxColumns: Int
+        get() = state.fmtMaxColumns
+        set(value) { state.fmtMaxColumns = value }
     var fmtBackup: Boolean
         get() = state.fmtBackup
         set(value) { state.fmtBackup = value }
 
     /** The `gad fmt` flags implied by the current formatting options. */
     fun fmtFlags(): List<String> = buildList {
-        if (fmtNoFormat) add("-no-format")
-        if (fmtNoArrayItemNewLine) add("-no-array-item-in-new-line")
-        if (fmtNoCallParamsNewLine) add("-no-call-params-in-new-line")
-        if (fmtNoDeclItemNewLine) add("-no-decl-item-in-new-line")
-        if (fmtNoDictItemNewLine) add("-no-dict-item-in-new-line")
-        if (fmtNoKeyValueArrayItemNewLine) add("-no-key-value-array-item-in-new-line")
-        if (fmtNoParamValuesNewLine) add("-no-parem-values-in-new-line")
+        if (fmtFormat) add("-format")
+        if (fmtArrayItemNewLine) add("-array-item-in-new-line")
+        if (fmtCallParamsNewLine) add("-call-params-in-new-line")
+        if (fmtDeclItemNewLine) add("-decl-item-in-new-line")
+        if (fmtDictItemNewLine) add("-dict-item-in-new-line")
+        if (fmtKeyValueArrayItemNewLine) add("-key-value-array-item-in-new-line")
+        if (fmtParamValuesNewLine) add("-parem-values-in-new-line")
+        if (fmtMaxColumns > 0) { add("-max-columns"); add(fmtMaxColumns.toString()) }
         if (fmtBackup) add("-backup")
     }
 

@@ -14,8 +14,8 @@ import dev.gad.intellij.settings.GadSettings
  *
  * `gad fmt -` reads the source on stdin and writes the formatted result to
  * stdout, so the whole document is piped through it; the configured
- * `-no-*-in-new-line` / `-no-format` / `-backup` flags are passed on the command
- * line.
+ * `-*-in-new-line` / `-format` / `-max-columns` / `-backup` flags are passed on
+ * the command line.
  */
 class GadFormattingService : AsyncDocumentFormattingService() {
 

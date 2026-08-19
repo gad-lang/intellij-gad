@@ -128,39 +128,51 @@ class GadFormattingConfigurable : BoundConfigurable("Formatting"), Configurable 
         return panel {
             group("gad fmt") {
                 row {
-                    checkBox("Disable all multi-line formatting")
-                        .comment("<code>-no-format</code>")
-                        .bindSelected(settings::fmtNoFormat)
+                    label("By default a construct wraps only when it overflows the column budget;" +
+                        " the toggles below force a construct onto separate lines.")
                 }
                 row {
-                    checkBox("Keep array items on a single line")
-                        .comment("<code>-no-array-item-in-new-line</code>")
-                        .bindSelected(settings::fmtNoArrayItemNewLine)
+                    checkBox("Force the full multi-line layout")
+                        .comment("<code>-format</code>")
+                        .bindSelected(settings::fmtFormat)
+                }
+                row("Max columns:") {
+                    intTextField(range = 0..1000)
+                        .comment("<code>-max-columns</code> (0 uses gad's default)")
+                        .bindText(
+                            { settings.fmtMaxColumns.toString() },
+                            { settings.fmtMaxColumns = it.toIntOrNull() ?: 0 },
+                        )
                 }
                 row {
-                    checkBox("Keep call params on a single line")
-                        .comment("<code>-no-call-params-in-new-line</code>")
-                        .bindSelected(settings::fmtNoCallParamsNewLine)
+                    checkBox("Each array item on its own line")
+                        .comment("<code>-array-item-in-new-line</code>")
+                        .bindSelected(settings::fmtArrayItemNewLine)
                 }
                 row {
-                    checkBox("Keep declaration items on a single line")
-                        .comment("<code>-no-decl-item-in-new-line</code>")
-                        .bindSelected(settings::fmtNoDeclItemNewLine)
+                    checkBox("Each call argument on its own line")
+                        .comment("<code>-call-params-in-new-line</code>")
+                        .bindSelected(settings::fmtCallParamsNewLine)
                 }
                 row {
-                    checkBox("Keep dict items on a single line")
-                        .comment("<code>-no-dict-item-in-new-line</code>")
-                        .bindSelected(settings::fmtNoDictItemNewLine)
+                    checkBox("Each declaration item on its own line")
+                        .comment("<code>-decl-item-in-new-line</code>")
+                        .bindSelected(settings::fmtDeclItemNewLine)
                 }
                 row {
-                    checkBox("Keep keyValueArray items on a single line")
-                        .comment("<code>-no-key-value-array-item-in-new-line</code>")
-                        .bindSelected(settings::fmtNoKeyValueArrayItemNewLine)
+                    checkBox("Each dict item on its own line")
+                        .comment("<code>-dict-item-in-new-line</code>")
+                        .bindSelected(settings::fmtDictItemNewLine)
                 }
                 row {
-                    checkBox("Keep param values on a single line")
-                        .comment("<code>-no-parem-values-in-new-line</code>")
-                        .bindSelected(settings::fmtNoParamValuesNewLine)
+                    checkBox("Each keyValueArray item on its own line")
+                        .comment("<code>-key-value-array-item-in-new-line</code>")
+                        .bindSelected(settings::fmtKeyValueArrayItemNewLine)
+                }
+                row {
+                    checkBox("Each param value on its own line")
+                        .comment("<code>-parem-values-in-new-line</code>")
+                        .bindSelected(settings::fmtParamValuesNewLine)
                 }
                 row {
                     checkBox("Back up each file before formatting")
