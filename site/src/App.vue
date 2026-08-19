@@ -15,6 +15,10 @@ const version = __VERSION__;
 const commit = __COMMIT__;
 const commitTime = __COMMIT_TIME__ ? new Date(__COMMIT_TIME__).toLocaleString() : "";
 const commitUrl = `https://github.com/gad-lang/intellij-gad/commit/${commit}`;
+const releasesUrl = "https://github.com/gad-lang/intellij-gad/releases";
+// The release asset is versioned (intellij-gad-<version>.zip); build the direct
+// download link for this build's version.
+const downloadUrl = `${releasesUrl}/download/v${version}/intellij-gad-${version}.zip`;
 </script>
 <template>
   <v-app>
@@ -24,6 +28,8 @@ const commitUrl = `https://github.com/gad-lang/intellij-gad/commit/${commit}`;
         intellij-gad
       </v-app-bar-title>
       <v-spacer />
+      <v-btn :href="downloadUrl" prepend-icon="mdi-download" variant="tonal" color="primary" class="mr-2" title="Download the plugin .zip for this release">Download .zip</v-btn>
+      <v-btn :href="releasesUrl" icon="mdi-tag-multiple" variant="text" title="All releases" />
       <v-btn :icon="theme.global.current.value.dark ? 'mdi-weather-sunny' : 'mdi-weather-night'" @click="toggleTheme" variant="text" title="Toggle theme" />
       <v-btn href="https://github.com/gad-lang/intellij-gad" icon="mdi-github" variant="text" />
     </v-app-bar>
@@ -42,6 +48,10 @@ const commitUrl = `https://github.com/gad-lang/intellij-gad/commit/${commit}`;
       <span v-if="commit">· commit <a :href="commitUrl" target="_blank" rel="noopener">{{ commit }}</a></span>
       <span v-if="commitTime">· {{ commitTime }}</span>
       <v-spacer />
+      <a :href="downloadUrl">Download .zip</a>
+      <span>·</span>
+      <a :href="releasesUrl">Releases</a>
+      <span>·</span>
       <a href="https://github.com/gad-lang/intellij-gad">gad-lang/intellij-gad</a>
     </v-footer>
   </v-app>
