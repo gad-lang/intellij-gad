@@ -1,0 +1,3 @@
+[submodule "gad-textmate"]
+	path = gad-textmate
+	url = git@github.com:gad-lang/gad-textmate.git

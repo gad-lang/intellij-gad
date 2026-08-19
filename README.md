@@ -9,8 +9,9 @@ Design and roadmap: [`PLAN.md`](PLAN.md).
 ## Features
 
 - **Syntax highlighting** for the three dialects, via a TextMate bundle assembled
-  at build time from the sibling [`../vscode-gad`](../vscode-gad) grammars (single
-  source of truth — no hand-written lexer).
+  at build time from the [`gad-textmate`](https://github.com/gad-lang/gad-textmate)
+  git submodule (the shared Gad bundle — single source of truth, no hand-written
+  lexer).
 - **Run configurations** with execution profiles: script, arguments, working
   directory, environment variables and `GADPATH`. Runs `gad <script> …`.
 - **Debugger** over the Gad Debug Adapter (`gad debug --dap`):
@@ -23,7 +24,7 @@ Design and roadmap: [`PLAN.md`](PLAN.md).
 - **Settings** (Settings ▸ Tools ▸ Gad): the `gad` executable location and a
   default `GADPATH`.
 - **Config schema** validation/completion for `.gad.yaml` / `.gadide.yaml`
-  (schemas reused from `../vscode-gad/schemas`).
+  (schemas reused from the `gad-textmate` submodule's `schemas/`).
 
 ## Requirements
 
@@ -35,10 +36,13 @@ Design and roadmap: [`PLAN.md`](PLAN.md).
 ## Build
 
 The IntelliJ Platform Gradle plugin downloads the target IDE SDK on first build.
-A `Makefile` wraps the common Gradle tasks:
+The grammars come from the `gad-textmate` submodule, so check it out first
+(`git submodule update --init`, or clone with `--recurse-submodules`). A
+`Makefile` wraps the common Gradle tasks:
 
 ```sh
 cd plugins/ide/intellij-gad
+git submodule update --init   # populate gad-textmate (grammars/schemas)
 make help        # list targets
 make compile     # compile the Kotlin (fast sanity check)
 make build       # → build/distributions/intellij-gad-<version>.zip
@@ -86,7 +90,7 @@ The plugin is a thin front-end over the Gad CLI's protocols:
 
 | Concern | Implementation |
 | --- | --- |
-| Highlighting | `highlight/GadBundleProvider` ships the VS Code grammars as a TextMate bundle |
+| Highlighting | `highlight/GadBundleProvider` ships the shared `gad-textmate` grammars as a TextMate bundle |
 | File identity | `lang/GadFile` (extension check) + `lang/GadFileIconProvider` (icon) |
 | Run | `run/*` — `GadRunConfiguration` + profile form + `GadCommandLineState` (`gad <script>`) |
 | Debug | `debug/*` — `GadDebugProcess` bridges `debug/dap/DapClient` (DAP over stdio) to the XDebugger |

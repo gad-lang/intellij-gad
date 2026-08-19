@@ -89,18 +89,17 @@ intellijPlatform {
     }
 }
 
-// Assemble a TextMate bundle from the VS Code extension (its package.json already
-// declares the languages + grammars) and copy the config JSON schemas, so
+// Assemble a TextMate bundle from the shared gad-textmate bundle (its package.json
+// already declares the languages + grammars) and copy the config JSON schemas, so
 // highlighting and schema validation share a single source of truth across the
-// two editor plugins.
+// editor plugins.
 //
-// By default this resolves the sibling `../vscode-gad` checkout (the submodule
-// layout in the main gad repo). Standalone builds — notably the release workflow,
-// which checks out only this repo — must point at their own vscode-gad checkout
-// with `-PvscodeDir=<path>`; otherwise the bundle would be empty and the plugin
-// would ship with no syntax highlighting.
-val vscodeDir = layout.projectDirectory.dir(
-    providers.gradleProperty("vscodeDir").getOrElse("../vscode-gad"),
+// By default this resolves the `gad-textmate` git submodule vendored in this repo.
+// Run `git submodule update --init` (the release workflow checks out submodules)
+// so it is populated; otherwise the bundle would be empty and the plugin would
+// ship with no syntax highlighting. Override the location with `-PtextmateDir=…`.
+val textmateDir = layout.projectDirectory.dir(
+    providers.gradleProperty("textmateDir").getOrElse("gad-textmate"),
 )
 
 // Fail loudly if the grammars are missing, rather than silently packaging an empty
@@ -110,23 +109,23 @@ val vscodeDir = layout.projectDirectory.dir(
 // exact case we must catch. A plain task with no outputs always runs. Capture plain
 // File values so the check stays configuration-cache-safe.
 val checkGrammars by tasks.registering {
-    val syntaxesDir = vscodeDir.dir("syntaxes").asFile
-    val vscodeRoot = vscodeDir.asFile
+    val syntaxesDir = textmateDir.dir("syntaxes").asFile
+    val bundleRoot = textmateDir.asFile
     doLast {
         val hasGrammars = syntaxesDir.isDirectory &&
             (syntaxesDir.listFiles { f -> f.name.endsWith(".tmLanguage.json") }?.isNotEmpty() ?: false)
         require(hasGrammars) {
-            "vscode-gad grammars not found under $vscodeRoot — pass " +
-                "-PvscodeDir=<path-to-vscode-gad> (the release workflow checks it out)."
+            "gad-textmate grammars not found under $bundleRoot — run " +
+                "`git submodule update --init` (or pass -PtextmateDir=<path>)."
         }
     }
 }
 
 // A TextMate bundle is a VS Code-style directory: package.json + the grammars and
-// language-configuration files it references. Ship the vscode-gad files verbatim.
+// language-configuration files it references. Ship the gad-textmate files verbatim.
 val bundleGad by tasks.registering(Copy::class) {
     dependsOn(checkGrammars)
-    from(vscodeDir) {
+    from(textmateDir) {
         include("package.json")
         include("syntaxes/**")
         include("language-configuration.json")
@@ -136,7 +135,7 @@ val bundleGad by tasks.registering(Copy::class) {
 }
 
 val copySchemas by tasks.registering(Copy::class) {
-    from(vscodeDir.dir("schemas")) { include("*.schema.json") }
+    from(textmateDir.dir("schemas")) { include("*.schema.json") }
     into(layout.buildDirectory.dir("generated-resources/schemas"))
 }
 
