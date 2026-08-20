@@ -31,6 +31,9 @@
         <!-- *_test.gad files get the Gad icon with a test badge. -->
         <fileIconProvider implementation="dev.gad.intellij.lang.GadFileIconProvider"/>
 
+        <!-- Best-effort Ctrl+Click go-to-declaration (text-based; no PSI). -->
+        <gotoDeclarationHandler implementation="dev.gad.intellij.lang.GadGotoDeclarationHandler"/>
+
         <applicationService serviceImplementation="dev.gad.intellij.settings.GadSettings"/>
         <!-- Settings > Build, Execution, Deployment > Gad, with three child pages. -->
         <applicationConfigurable parentId="build"
