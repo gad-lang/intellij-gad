@@ -36,6 +36,12 @@ class GadFormattingService : AsyncDocumentFormattingService() {
         // -backup is meaningless when formatting stdin (there is no file to back
         // up), so pass only the layout flags here.
         command.addAll(settings.fmtFlags().filter { it != "-backup" })
+        // Name the piped buffer so `gad fmt` picks the right dialect
+        // (.gad / .gadt / .gadx) instead of assuming plain Gad on stdin.
+        request.ioFile?.name?.let {
+            command.add("--stdin-name")
+            command.add(it)
+        }
         command.add("-") // read stdin, write stdout
 
         val cmd = GeneralCommandLine(command)
