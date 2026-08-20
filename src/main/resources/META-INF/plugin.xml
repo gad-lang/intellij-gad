@@ -31,8 +31,11 @@
         <!-- *_test.gad files get the Gad icon with a test badge. -->
         <fileIconProvider implementation="dev.gad.intellij.lang.GadFileIconProvider"/>
 
-        <!-- Best-effort Ctrl+Click go-to-declaration (text-based; no PSI). -->
+        <!-- Ctrl+Click go-to-declaration via the `gad def` scope resolver. -->
         <gotoDeclarationHandler implementation="dev.gad.intellij.lang.GadGotoDeclarationHandler"/>
+        <!-- Auto-completion via the `gad complete` language service (any language;
+             the contributor itself filters to Gad files). -->
+        <completion.contributor implementationClass="dev.gad.intellij.lang.GadCompletionContributor"/>
 
         <applicationService serviceImplementation="dev.gad.intellij.settings.GadSettings"/>
         <!-- Settings > Build, Execution, Deployment > Gad, with three child pages. -->
