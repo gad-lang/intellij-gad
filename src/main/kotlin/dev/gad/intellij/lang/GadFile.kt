@@ -21,4 +21,8 @@ object GadFile {
 
     fun isGadFile(file: VirtualFile?): Boolean =
         file != null && !file.isDirectory && file.extension?.lowercase() in EXTENSIONS
+
+    /** A Gadx (`.gadx`) indentation/pug-style template. */
+    fun isGadxFile(file: VirtualFile?): Boolean =
+        file != null && !file.isDirectory && file.extension?.lowercase() == EXT_GADX
 }

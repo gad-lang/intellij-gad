@@ -34,7 +34,10 @@ class GadCompletionContributor : CompletionContributor() {
 
                     val text = parameters.editor.document.charsSequence.toString()
                     val byteOffset = GadCli.byteOffset(text, parameters.offset)
-                    val out = GadCli.run(text, "complete", "--offset", byteOffset.toString()) ?: return
+                    // Pass the file name so `gad complete` picks the dialect (.gad / .gadx).
+                    val name = file.virtualFile?.name ?: "buffer.gad"
+                    val out = GadCli.run(text, "complete", "--offset", byteOffset.toString(), "--stdin-name", name)
+                        ?: return
 
                     for (item in parseItems(out)) {
                         var element = LookupElementBuilder.create(item.label)
