@@ -45,6 +45,7 @@ class GadBundleProvider : TextMateBundleProvider {
             "language-configuration.json",
             "gadx-language-configuration.json",
             "syntaxes/gad.tmLanguage.json",
+            "syntaxes/gadt.tmLanguage.json",
             "syntaxes/gadx.tmLanguage.json",
         )
     }
