@@ -32,24 +32,12 @@ class GadCompletionContributor : CompletionContributor() {
                     val file = parameters.originalFile
                     if (!GadFile.isGadFile(file.virtualFile)) return
 
-                    // Use the REAL editor caret + original document (not
-                    // parameters.offset, which is in the completion copy that has the
-                    // synthetic `IntellijIdeaRulezzz` identifier inserted — the copy's
-                    // PSI is what changed when a ParserDefinition was added, and that
-                    // desynced the offset / IDE-computed prefix).
                     val text = parameters.editor.document.charsSequence.toString()
-                    val caret = parameters.editor.caretModel.offset
-                    val byteOffset = GadCli.byteOffset(text, caret)
+                    val byteOffset = GadCli.byteOffset(text, parameters.offset)
                     // Pass the file name so `gad complete` picks the dialect (.gad / .gadx).
                     val name = file.virtualFile?.name ?: "buffer.gad"
                     val out = GadCli.run(text, "complete", "--offset", byteOffset.toString(), "--stdin-name", name)
                         ?: return
-
-                    // Match candidates against the identifier already typed before the
-                    // caret, so the IDE does not filter them out with a prefix derived
-                    // from the (now real) PSI position.
-                    val prefix = identifierPrefix(text, caret)
-                    val rs = if (prefix.isEmpty()) result else result.withPrefixMatcher(prefix)
 
                     for (item in parseItems(out)) {
                         var element = LookupElementBuilder.create(item.label)
@@ -58,7 +46,7 @@ class GadCompletionContributor : CompletionContributor() {
                         if (firstLine != null) {
                             element = element.withTailText("  ${firstLine.trim().removePrefix("# ")}", true)
                         }
-                        rs.addElement(element)
+                        result.addElement(element)
                     }
                 }
             },
@@ -66,16 +54,6 @@ class GadCompletionContributor : CompletionContributor() {
     }
 
     private data class Item(val label: String, val kind: String, val doc: String)
-
-    /** The run of identifier chars ending at [caret] (the typed completion prefix). */
-    private fun identifierPrefix(text: CharSequence, caret: Int): String {
-        var start = caret.coerceIn(0, text.length)
-        while (start > 0) {
-            val c = text[start - 1]
-            if (c.isLetterOrDigit() || c == '_' || c == '$') start-- else break
-        }
-        return text.subSequence(start, caret.coerceIn(0, text.length)).toString()
-    }
 
     /** Parse the `gad complete` JSON array; returns empty on any malformed input. */
     private fun parseItems(json: String): List<Item> {
