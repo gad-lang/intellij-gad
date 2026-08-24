@@ -31,8 +31,13 @@
         <!-- *_test.gad files get the Gad icon with a test badge. -->
         <fileIconProvider implementation="dev.gad.intellij.lang.GadFileIconProvider"/>
 
-        <!-- Ctrl+Click go-to-declaration via the `gad def` scope resolver. -->
-        <gotoDeclarationHandler implementation="dev.gad.intellij.lang.GadGotoDeclarationHandler"/>
+        <!-- Ctrl+Hover / Ctrl+Click via the `gad def` scope resolver. A reference
+             is contributed for the identifier under the caret only, so the hover
+             highlight is a tight word underline (not the whole TextMate leaf). No
+             `language` filter: Gad files are TextMate-backed (their PSI may be
+             plain text), so the provider filters by file extension itself. -->
+        <psi.referenceContributor
+            implementation="dev.gad.intellij.lang.GadReferenceContributor"/>
         <!-- Auto-completion via the `gad complete` language service (any language;
              the contributor itself filters to Gad files). -->
         <completion.contributor implementationClass="dev.gad.intellij.lang.GadCompletionContributor"/>
