@@ -1,6 +1,5 @@
 package dev.gad.intellij.doc
 
-import com.intellij.execution.configurations.GeneralCommandLine
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ModalityState
@@ -14,12 +13,9 @@ import com.intellij.ui.jcef.JBCefApp
 import com.intellij.ui.jcef.JBCefBrowser
 import com.intellij.util.Alarm
 import com.intellij.util.ui.UIUtil
+import dev.gad.intellij.lang.GadCli
 import dev.gad.intellij.lang.GadFile
-import dev.gad.intellij.settings.GadExecutable
-import dev.gad.intellij.settings.GadSettings
 import java.awt.Color
-import java.nio.charset.StandardCharsets
-import java.util.concurrent.TimeUnit
 import javax.swing.JComponent
 import javax.swing.JEditorPane
 import javax.swing.JScrollPane
@@ -76,10 +72,6 @@ class GadDocPanel(private val project: Project, parent: Disposable) {
 
     /** Run `gad doc` off the EDT, then load the HTML back on the EDT. */
     private fun render(file: VirtualFile, text: String) {
-        val exe = GadExecutable.resolvePath(GadSettings.getInstance().gadPath) ?: run {
-            showMessage("gad executable not found — set it in Settings ▸ Build, Execution, Deployment ▸ Gad ▸ Executable.")
-            return
-        }
         // The generated docs mirror the source tree under the workspace `doc/`
         // directory, and `/PATH` in doc comments resolves against that `doc/` root.
         // Pass the source's project-relative path as --name so the module identity
@@ -89,47 +81,20 @@ class GadDocPanel(private val project: Project, parent: Disposable) {
         val rel = if (base != null && file.path.startsWith("$base/")) file.path.removePrefix("$base/") else file.name
         val docBase = if (base != null) "file://$base/doc/${rel.substringBeforeLast('/', "")}".trimEnd('/') + "/" else null
         ApplicationManager.getApplication().executeOnPooledThread {
-            val html = runDoc(exe, rel, text, docBase)
+            val html = runDoc(rel, text, docBase)
             ApplicationManager.getApplication().invokeLater({ show(html) }, ModalityState.any())
         }
     }
 
-    private fun runDoc(exe: String, name: String, text: String, docBase: String?): String {
+    private fun runDoc(name: String, text: String, docBase: String?): String {
+        // Route through GadCli.run so the doc panel shares the plugin-wide
+        // concurrency gate / size cap / pipe-drain safety (a per-keystroke process
+        // must never pile up — a runaway once froze the whole machine). GadCli.run
+        // appends the `-` stdin marker, so this is `gad doc -name NAME -html -`.
+        val out = GadCli.run(text, "doc", "-name", name, "-html")
+            ?: return errorHtml("gad doc unavailable (busy, too large, or failed)")
         return try {
-            val cmd = GeneralCommandLine(exe, "doc", "-name", name, "-html", "-")
-                .withCharset(StandardCharsets.UTF_8)
-            val process = cmd.createProcess()
-
-            // Write stdin and read stderr on separate threads while reading stdout,
-            // so a large buffer / verbose parse error can never deadlock the pipes
-            // (this runs per keystroke; a stall froze the IDE).
-            val stdin = Thread {
-                try {
-                    process.outputStream.use { it.write(text.toByteArray(StandardCharsets.UTF_8)) }
-                } catch (_: Exception) {
-                }
-            }.apply { isDaemon = true; start() }
-            val errBuf = StringBuilder()
-            val stderr = Thread {
-                try {
-                    errBuf.append(process.errorStream.use { it.readBytes().toString(StandardCharsets.UTF_8) })
-                } catch (_: Exception) {
-                }
-            }.apply { isDaemon = true; start() }
-
-            val out = process.inputStream.use { it.readBytes().toString(StandardCharsets.UTF_8) }
-
-            if (!process.waitFor(10, TimeUnit.SECONDS)) {
-                process.destroyForcibly()
-                return errorHtml("gad doc timed out")
-            }
-            stdin.join(500)
-            stderr.join(500)
-            if (process.exitValue() != 0) {
-                errorHtml(errBuf.toString().ifBlank { "gad doc exited with ${process.exitValue()}" })
-            } else {
-                page(out, docBase)
-            }
+            page(out, docBase)
         } catch (e: Exception) {
             errorHtml(e.message ?: e.toString())
         }
