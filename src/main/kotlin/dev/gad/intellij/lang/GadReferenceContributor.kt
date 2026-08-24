@@ -36,11 +36,14 @@ class GadReferenceContributor : PsiReferenceContributor() {
 private class GadIdentifierReferenceProvider : PsiReferenceProvider() {
     override fun getReferencesByElement(element: PsiElement, context: ProcessingContext): Array<PsiReference> {
         return try {
-            val file = element.containingFile ?: return PsiReference.EMPTY_ARRAY
-            if (!GadFile.isGadFile(file.virtualFile)) return PsiReference.EMPTY_ARRAY
-            // References live on leaf elements only (no children), so they are not
-            // duplicated on the enclosing file node.
-            if (element.firstChild != null) return PsiReference.EMPTY_ARRAY
+            // Gad files are TextMate-backed with no ParserDefinition, so their PSI
+            // is a PsiPlainTextFile — which is the HintedReferenceHost. References
+            // must be contributed on the FILE element (whose text is the whole
+            // buffer and whose textRange starts at 0), not on a leaf; the platform
+            // walks up to the file and matches a reference whose range contains the
+            // caret, giving a tight word underline.
+            if (element !is PsiFile) return PsiReference.EMPTY_ARRAY
+            if (!GadFile.isGadFile(element.virtualFile)) return PsiReference.EMPTY_ARRAY
             val text = element.text ?: return PsiReference.EMPTY_ARRAY
             if (text.length < 2) return PsiReference.EMPTY_ARRAY
 
