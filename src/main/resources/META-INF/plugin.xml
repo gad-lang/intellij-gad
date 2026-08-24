@@ -31,15 +31,15 @@
         <!-- *_test.gad files get the Gad icon with a test badge. -->
         <fileIconProvider implementation="dev.gad.intellij.lang.GadFileIconProvider"/>
 
-        <!-- Ctrl+Click go-to-declaration via the `gad def` scope resolver. -->
+        <!-- A minimal PSI (identifier-level tokens) so the file is not a single
+             plain-text leaf. Highlighting stays TextMate (below); this only makes
+             `findElementAt(caret)` return the word, so Ctrl+hover/Ctrl+click
+             underline just the identifier. -->
+        <lang.parserDefinition language="Gad"
+            implementationClass="dev.gad.intellij.lang.GadParserDefinition"/>
+        <!-- Ctrl+Click go-to-declaration via the `gad def` scope resolver. With
+             the identifier-level PSI above, the platform underlines just the word. -->
         <gotoDeclarationHandler implementation="dev.gad.intellij.lang.GadGotoDeclarationHandler"/>
-        <!-- Ctrl+Hover: a reference for the identifier under the caret, so the
-             hover underline is a tight word range instead of the whole TextMate
-             leaf. Registered alongside the handler as a pure improvement — if the
-             reference resolves the underline is tight, otherwise the handler still
-             navigates (no `language` filter: Gad PSI may be plain text). -->
-        <psi.referenceContributor
-            implementation="dev.gad.intellij.lang.GadReferenceContributor"/>
         <!-- Auto-completion via the `gad complete` language service (any language;
              the contributor itself filters to Gad files). -->
         <completion.contributor implementationClass="dev.gad.intellij.lang.GadCompletionContributor"/>
