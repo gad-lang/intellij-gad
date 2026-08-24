@@ -99,12 +99,34 @@ class GadDocPanel(private val project: Project, parent: Disposable) {
             val cmd = GeneralCommandLine(exe, "doc", "-name", name, "-html", "-")
                 .withCharset(StandardCharsets.UTF_8)
             val process = cmd.createProcess()
-            process.outputStream.use { it.write(text.toByteArray(StandardCharsets.UTF_8)) }
-            val out = process.inputStream.readBytes().toString(StandardCharsets.UTF_8)
-            val err = process.errorStream.readBytes().toString(StandardCharsets.UTF_8)
-            process.waitFor(10, TimeUnit.SECONDS)
+
+            // Write stdin and read stderr on separate threads while reading stdout,
+            // so a large buffer / verbose parse error can never deadlock the pipes
+            // (this runs per keystroke; a stall froze the IDE).
+            val stdin = Thread {
+                try {
+                    process.outputStream.use { it.write(text.toByteArray(StandardCharsets.UTF_8)) }
+                } catch (_: Exception) {
+                }
+            }.apply { isDaemon = true; start() }
+            val errBuf = StringBuilder()
+            val stderr = Thread {
+                try {
+                    errBuf.append(process.errorStream.use { it.readBytes().toString(StandardCharsets.UTF_8) })
+                } catch (_: Exception) {
+                }
+            }.apply { isDaemon = true; start() }
+
+            val out = process.inputStream.use { it.readBytes().toString(StandardCharsets.UTF_8) }
+
+            if (!process.waitFor(10, TimeUnit.SECONDS)) {
+                process.destroyForcibly()
+                return errorHtml("gad doc timed out")
+            }
+            stdin.join(500)
+            stderr.join(500)
             if (process.exitValue() != 0) {
-                errorHtml(err.ifBlank { "gad doc exited with ${process.exitValue()}" })
+                errorHtml(errBuf.toString().ifBlank { "gad doc exited with ${process.exitValue()}" })
             } else {
                 page(out, docBase)
             }
