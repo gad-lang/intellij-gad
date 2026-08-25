@@ -33,9 +33,16 @@
 
         <!-- Ctrl+Click go-to-declaration via the `gad def` scope resolver. -->
         <gotoDeclarationHandler implementation="dev.gad.intellij.lang.GadGotoDeclarationHandler"/>
-        <!-- Auto-completion via the `gad complete` language service (any language;
-             the contributor itself filters to Gad files). -->
-        <completion.contributor implementationClass="dev.gad.intellij.lang.GadCompletionContributor"/>
+        <!-- Auto-completion via the `gad complete` language service. The Gad file
+             types declare language="Gad" but there is no Gad ParserDefinition
+             (removed to keep tight Ctrl-hover), so their PSI is a plain-text file
+             whose language is TEXT — register the contributor for TEXT (and Gad,
+             in case a parser is reintroduced). The contributor itself filters to
+             Gad files, so other plain-text files are unaffected. -->
+        <completion.contributor language="TEXT"
+                                implementationClass="dev.gad.intellij.lang.GadCompletionContributor"/>
+        <completion.contributor language="Gad"
+                                implementationClass="dev.gad.intellij.lang.GadCompletionContributor"/>
 
         <applicationService serviceImplementation="dev.gad.intellij.settings.GadSettings"/>
         <!-- Settings > Build, Execution, Deployment > Gad, with three child pages. -->
