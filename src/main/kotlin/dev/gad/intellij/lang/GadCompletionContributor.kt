@@ -39,6 +39,15 @@ class GadCompletionContributor : CompletionContributor() {
                     val out = GadCli.run(text, "complete", "--offset", byteOffset.toString(), "--stdin-name", name)
                         ?: return
 
+                    // Match against the real identifier prefix before the caret, not
+                    // the platform's auto-detected one. At a non-identifier position
+                    // (e.g. `for i, u in ‸ begin`) IntelliJ derives its prefix from the
+                    // inserted dummy identifier, which no candidate label matches — so
+                    // an empty slot showed "No suggestions" while `u‸` worked. Computing
+                    // the prefix from the original document (EDT-only, no caret-model
+                    // navigation) fixes the empty case without the earlier restart loop.
+                    val res = result.withPrefixMatcher(identPrefixBefore(text, parameters.offset))
+
                     for (item in parseItems(out)) {
                         var element = LookupElementBuilder.create(item.label)
                             .withTypeText(item.kind, true)
@@ -46,11 +55,27 @@ class GadCompletionContributor : CompletionContributor() {
                         if (firstLine != null) {
                             element = element.withTailText("  ${firstLine.trim().removePrefix("# ")}", true)
                         }
-                        result.addElement(element)
+                        res.addElement(element)
                     }
                 }
             },
         )
+    }
+
+    /**
+     * The identifier characters immediately before [caret] in [text] (letters,
+     * digits, `_`), i.e. what the user has typed of the current word. Empty when
+     * the caret is not preceded by an identifier char — which is exactly when the
+     * platform's own prefix would be wrong, so we set an empty matcher there and
+     * every candidate is shown.
+     */
+    private fun identPrefixBefore(text: CharSequence, caret: Int): String {
+        var start = caret.coerceIn(0, text.length)
+        while (start > 0) {
+            val c = text[start - 1]
+            if (c.isLetterOrDigit() || c == '_') start-- else break
+        }
+        return text.subSequence(start, caret.coerceIn(0, text.length)).toString()
     }
 
     private data class Item(val label: String, val kind: String, val doc: String)
