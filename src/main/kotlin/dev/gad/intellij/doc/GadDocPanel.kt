@@ -1,17 +1,23 @@
 package dev.gad.intellij.doc
 
+import com.intellij.icons.AllIcons
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.actionSystem.ActionManager
+import com.intellij.openapi.actionSystem.ActionUpdateThread
+import com.intellij.openapi.actionSystem.AnAction
+import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.editor.Document
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.ui.SimpleToolWindowPanel
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.ui.jcef.JBCefApp
 import com.intellij.ui.jcef.JBCefBrowser
-import com.intellij.util.Alarm
 import com.intellij.util.ui.UIUtil
 import dev.gad.intellij.lang.GadCli
 import dev.gad.intellij.lang.GadFile
@@ -21,53 +27,51 @@ import javax.swing.JEditorPane
 import javax.swing.JScrollPane
 
 /**
- * Live documentation preview of the active Gad editor. Every second it checks
- * the selected editor and, when the file or its (unsaved) content changed, pipes
- * the current buffer to `gad doc -name <file> -html -` and shows the rendered
- * HTML — without writing any file. Uses JCEF when available, else a basic Swing
- * HTML pane.
+ * Documentation preview of the active Gad editor. It pipes the current buffer to
+ * `gad doc -name <file> -html -` and shows the rendered HTML (JCEF when
+ * available, else a basic Swing HTML pane) — without writing any file.
+ *
+ * Rendering is ON DEMAND via the toolbar Refresh button (and once when the panel
+ * is created), NOT on a timer: a continuous refresh loop drove the JCEF browser
+ * on every keystroke and could freeze the whole machine.
  */
 class GadDocPanel(private val project: Project, parent: Disposable) {
 
     private val browser: JBCefBrowser? = if (JBCefApp.isSupported()) JBCefBrowser() else null
     private val fallback = JEditorPane("text/html", "").apply { isEditable = false }
-    private val alarm = Alarm(Alarm.ThreadToUse.SWING_THREAD, parent)
-    private var lastKey: String? = null
 
-    val component: JComponent =
-        browser?.component ?: JScrollPane(fallback)
+    val component: JComponent
 
     init {
         browser?.let { Disposer.register(parent, it) }
-        showMessage("Open a .gad / .gadt / .gadx file to see its documentation.")
-        schedule(0)
-    }
 
-    private fun schedule(delayMs: Int) {
-        if (alarm.isDisposed) return
-        alarm.addRequest({ tick() }, delayMs)
-    }
-
-    /** One refresh cycle: re-render only when the target/content changed. */
-    private fun tick() {
-        try {
-            val editor = FileEditorManager.getInstance(project).selectedTextEditor
-            val doc: Document? = editor?.document
-            val file: VirtualFile? = doc?.let { FileDocumentManager.getInstance().getFile(it) }
-            if (doc == null || file == null || !GadFile.isGadFile(file)) {
-                if (lastKey != "none") {
-                    lastKey = "none"
-                    showMessage("Open a .gad / .gadt / .gadx file to see its documentation.")
-                }
-                return
-            }
-            val key = file.path + "@" + doc.modificationStamp
-            if (key == lastKey) return
-            lastKey = key
-            render(file, doc.text)
-        } finally {
-            schedule(REFRESH_MS)
+        val panel = SimpleToolWindowPanel(true, true)
+        val refresh = object : AnAction("Refresh", "Re-render this Gad file's documentation", AllIcons.Actions.Refresh) {
+            override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.EDT
+            override fun actionPerformed(e: AnActionEvent) = refresh()
         }
+        val toolbar = ActionManager.getInstance()
+            .createActionToolbar("GadDoc", DefaultActionGroup(refresh), true)
+        val content = browser?.component ?: JScrollPane(fallback)
+        toolbar.targetComponent = content
+        panel.toolbar = toolbar.component
+        panel.setContent(content)
+        component = panel
+
+        showMessage("Open a .gad / .gadt / .gadx file and press Refresh (⟳) to render its documentation.")
+        refresh()
+    }
+
+    /** Render the active Gad editor's current buffer, or show a hint. */
+    private fun refresh() {
+        val editor = FileEditorManager.getInstance(project).selectedTextEditor
+        val doc: Document? = editor?.document
+        val file: VirtualFile? = doc?.let { FileDocumentManager.getInstance().getFile(it) }
+        if (doc == null || file == null || !GadFile.isGadFile(file)) {
+            showMessage("Open a .gad / .gadt / .gadx file and press Refresh (⟳) to render its documentation.")
+            return
+        }
+        render(file, doc.text)
     }
 
     /** Run `gad doc` off the EDT, then load the HTML back on the EDT. */
@@ -138,8 +142,4 @@ class GadDocPanel(private val project: Project, parent: Disposable) {
 
     private fun escape(s: String): String =
         s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-
-    companion object {
-        private const val REFRESH_MS = 1000
-    }
 }
