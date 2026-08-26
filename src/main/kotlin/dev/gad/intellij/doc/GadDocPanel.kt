@@ -21,7 +21,7 @@ import com.intellij.ui.jcef.JBCefBrowser
 import com.intellij.util.ui.UIUtil
 import dev.gad.intellij.lang.GadCli
 import dev.gad.intellij.lang.GadFile
-import java.awt.Color
+import dev.gad.intellij.settings.GadSettings
 import javax.swing.JComponent
 import javax.swing.JEditorPane
 import javax.swing.JScrollPane
@@ -76,69 +76,74 @@ class GadDocPanel(private val project: Project, parent: Disposable) {
 
     /** Run `gad doc` off the EDT, then load the HTML back on the EDT. */
     private fun render(file: VirtualFile, text: String) {
-        // The generated docs mirror the source tree under the workspace `doc/`
-        // directory, and `/PATH` in doc comments resolves against that `doc/` root.
-        // Pass the source's project-relative path as --name so the module identity
-        // matches, and base the preview at the file's `doc/` location so relative
-        // asset links resolve the same way they do in the generated docs.
         val base = project.basePath
         val rel = if (base != null && file.path.startsWith("$base/")) file.path.removePrefix("$base/") else file.name
-        val docBase = if (base != null) "file://$base/doc/${rel.substringBeforeLast('/', "")}".trimEnd('/') + "/" else null
         ApplicationManager.getApplication().executeOnPooledThread {
-            val html = runDoc(rel, text, docBase)
+            val html = runDoc(rel, text)
             ApplicationManager.getApplication().invokeLater({ show(html) }, ModalityState.any())
         }
     }
 
-    private fun runDoc(name: String, text: String, docBase: String?): String {
+    /**
+     * Render this file's docs as a full HTML page via `gad doc … -html -full-page`.
+     * The template (doc-templates/html.gadx) owns the whole page — sidebar, search,
+     * light/dark theme and PrismJS highlighting of the gad/gadx/gadt fences — so the
+     * panel no longer wraps anything; it only forces the page theme to match the IDE.
+     */
+    private fun runDoc(name: String, text: String): String {
         // Route through GadCli.run so the doc panel shares the plugin-wide
         // concurrency gate / size cap / pipe-drain safety (a per-keystroke process
-        // must never pile up — a runaway once froze the whole machine). GadCli.run
-        // appends the `-` stdin marker, so this is `gad doc -name NAME -html -`.
-        val out = GadCli.run(text, "doc", "-name", name, "-html")
-            ?: return errorHtml("gad doc unavailable (busy, too large, or failed)")
-        return try {
-            page(out, docBase)
-        } catch (e: Exception) {
-            errorHtml(e.message ?: e.toString())
+        // must never pile up — a runaway once froze the whole machine).
+        val args = mutableListOf("doc", "-name", name, "-html", "-full-page")
+        // Template choice (Settings ▸ Tools ▸ Gad): "standard" forces the built-in
+        // template; "config" uses the workspace `.gad/doc-templates/html.gadx` (or an
+        // explicit path when set).
+        val settings = GadSettings.getInstance()
+        if (settings.useStandardDocTemplate()) {
+            args += "-std-template"
+        } else {
+            settings.docHtmlTemplatePath()?.let { args += listOf("-doc-template-html", it) }
         }
+        val out = GadCli.run(text, *args.toTypedArray())
+            ?: return errorPage("gad doc unavailable (busy, too large, or failed)")
+        return themed(out)
+    }
+
+    private fun minimalPage(bodyStyle: String, body: String): String {
+        val theme = ideTheme()
+        return "<!doctype html><html data-theme=\"$theme\"><head><meta charset=\"utf-8\"></head>" +
+            "<body style=\"$bodyStyle\">$body</body></html>"
+    }
+
+    private fun errorPage(msg: String): String =
+        minimalPage("font-family:monospace;padding:16px;color:#e06c75;white-space:pre-wrap", escape(msg))
+
+    /** "dark" or "light" from the IDE panel background's luminance (theme-agnostic,
+     *  no deprecated LaF check). */
+    private fun ideTheme(): String {
+        val c = UIUtil.getPanelBackground()
+        val lum = (0.299 * c.red + 0.587 * c.green + 0.114 * c.blue) / 255.0
+        return if (lum < 0.5) "dark" else "light"
+    }
+
+    /** Force the rendered page to the IDE theme by stamping `data-theme` on <html>. */
+    private fun themed(html: String): String {
+        val theme = ideTheme()
+        val i = html.indexOf("<html")
+        if (i < 0) return html
+        val end = html.indexOf('>', i)
+        if (end < 0) return html
+        val head = html.substring(0, end)
+        if (head.contains("data-theme")) return html
+        return html.substring(0, end) + " data-theme=\"$theme\"" + html.substring(end)
     }
 
     private fun show(html: String) {
         browser?.loadHTML(html) ?: run { fallback.text = html; fallback.caretPosition = 0 }
     }
 
-    private fun showMessage(msg: String) = show(page("<p style='opacity:.7'>${escape(msg)}</p>", null))
-
-    private fun errorHtml(msg: String) =
-        page("<pre style='color:#e06c75;white-space:pre-wrap'>${escape(msg)}</pre>", null)
-
-    /** Wrap an HTML fragment in a theme-aware page, basing relative URLs (asset
-     * links in doc comments) at the file's `doc/` directory when known. */
-    private fun page(body: String, docBase: String?): String {
-        val bg = hex(UIUtil.getPanelBackground())
-        val fg = hex(UIUtil.getLabelForeground())
-        val link = hex(UIUtil.getLabelForeground())
-        val border = hex(UIUtil.getBoundsColor())
-        val mono = "SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace"
-        val baseTag = if (docBase != null) "<base href=\"$docBase\">" else ""
-        return """
-            <!doctype html><html><head><meta charset="utf-8">$baseTag<style>
-              body { background:$bg; color:$fg; font-family:sans-serif; font-size:13px;
-                     line-height:1.5; margin:0; padding:12px 16px; }
-              h1 { font-size:1.5em; } h2 { font-size:1.25em; border-bottom:1px solid $border; padding-bottom:.2em; }
-              h3 { font-size:1.05em; } a { color:$link; }
-              code, pre { font-family:$mono; font-size:12px; }
-              pre { background:rgba(127,127,127,.12); padding:8px 10px; border-radius:6px; overflow:auto; }
-              code { background:rgba(127,127,127,.12); padding:1px 4px; border-radius:4px; }
-              pre code { background:none; padding:0; }
-              table { border-collapse:collapse; } th,td { border:1px solid $border; padding:4px 8px; }
-              blockquote { margin:0; padding:0 12px; border-left:3px solid $border; opacity:.85; }
-            </style></head><body>$body</body></html>
-        """.trimIndent()
-    }
-
-    private fun hex(c: Color): String = "#%02x%02x%02x".format(c.red, c.green, c.blue)
+    private fun showMessage(msg: String) =
+        show(minimalPage("font-family:sans-serif;padding:16px;opacity:.7", escape(msg)))
 
     private fun escape(s: String): String =
         s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")

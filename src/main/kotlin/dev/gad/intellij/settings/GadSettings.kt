@@ -32,6 +32,14 @@ class GadSettings : SimplePersistentStateComponent<GadSettings.MyState>(MyState(
         var fmtParamValuesNewLine by property(false)
         var fmtMaxColumns by property(0) // 0 uses gad's default column budget
         var fmtBackup by property(false)
+
+        // Gad doc panel: which HTML template renders the preview. "standard" forces
+        // the built-in template; "config" uses the workspace/config template
+        // (.gad/doc-templates/html.gadx, or docHtmlTemplate below when set).
+        var docTemplate by string("standard")
+
+        /** Explicit HTML doc template path for "config" mode; blank = workspace default. */
+        var docHtmlTemplate by string("")
     }
 
     var gadPath: String
@@ -70,6 +78,22 @@ class GadSettings : SimplePersistentStateComponent<GadSettings.MyState>(MyState(
     var fmtBackup: Boolean
         get() = state.fmtBackup
         set(value) { state.fmtBackup = value }
+
+    // Gad doc panel template choice.
+    var docTemplate: String
+        get() = state.docTemplate.orEmpty().ifEmpty { "standard" }
+        set(value) { state.docTemplate = value }
+    var docHtmlTemplate: String
+        get() = state.docHtmlTemplate.orEmpty()
+        set(value) { state.docHtmlTemplate = value }
+
+    /** True when the doc panel should force the built-in (standard) template. */
+    fun useStandardDocTemplate(): Boolean = docTemplate != "config"
+
+    /** The explicit HTML doc template path to pass in "config" mode, or null to let
+     *  the CLI resolve the workspace `.gad/doc-templates/html.gadx`. */
+    fun docHtmlTemplatePath(): String? =
+        if (useStandardDocTemplate()) null else docHtmlTemplate.trim().ifEmpty { null }
 
     /** The `gad fmt` flags implied by the current formatting options. */
     fun fmtFlags(): List<String> = buildList {

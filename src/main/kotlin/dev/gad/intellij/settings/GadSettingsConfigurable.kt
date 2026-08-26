@@ -10,9 +10,11 @@ import com.intellij.openapi.ui.DialogPanel
 import com.intellij.openapi.ui.TextFieldWithBrowseButton
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.dsl.builder.AlignX
+import com.intellij.ui.dsl.builder.bind
 import com.intellij.ui.dsl.builder.bindSelected
 import com.intellij.ui.dsl.builder.bindText
 import com.intellij.ui.dsl.builder.panel
+import com.intellij.ui.dsl.builder.toMutableProperty
 import com.intellij.util.ui.UIUtil
 import javax.swing.JComponent
 
@@ -179,6 +181,49 @@ class GadFormattingConfigurable : BoundConfigurable("Formatting"), Configurable 
                         .comment("<code>-backup</code>")
                         .bindSelected(settings::fmtBackup)
                 }
+            }
+        }
+    }
+}
+
+/** Settings ▸ Build, Execution, Deployment ▸ Gad ▸ Documentation — the Gad Doc panel. */
+class GadDocConfigurable : BoundConfigurable("Documentation"), Configurable {
+    override fun createPanel(): DialogPanel {
+        val settings = GadSettings.getInstance()
+        lateinit var pathField: TextFieldWithBrowseButton
+        return panel {
+            group("Gad Doc panel") {
+                row {
+                    label("Which HTML template renders the live documentation preview.")
+                }
+                buttonsGroup {
+                    row {
+                        radioButton("Standard (built-in) template", "standard")
+                            .comment("The modern built-in page: sidebar, search, light/dark theme, PrismJS highlighting.")
+                    }
+                    row {
+                        radioButton("Config template", "config")
+                            .comment("Use the workspace <code>.gad/doc-templates/html.gadx</code>, or the path below when set.")
+                    }
+                }.bind(settings::docTemplate)
+
+                row("HTML template:") {
+                    pathField = TextFieldWithBrowseButton().apply {
+                        addBrowseFolderListener(
+                            "Gad HTML Doc Template",
+                            "Select an html.gadx template (used only in Config mode; blank = workspace default)",
+                            null,
+                            FileChooserDescriptorFactory.createSingleFileDescriptor(),
+                        )
+                    }
+                    cell(pathField)
+                        .align(AlignX.FILL)
+                        .bind(
+                            { it.text },
+                            { c, v -> c.text = v },
+                            settings::docHtmlTemplate.toMutableProperty(),
+                        )
+                }.comment("Optional. Only applies when <b>Config template</b> is selected.")
             }
         }
     }

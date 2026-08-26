@@ -59,6 +59,9 @@
                                  instance="dev.gad.intellij.settings.GadFormattingConfigurable"
                                  id="dev.gad.intellij.settings.formatting" displayName="Formatting"/>
         <applicationConfigurable parentId="dev.gad.intellij.settings"
+                                 instance="dev.gad.intellij.settings.GadDocConfigurable"
+                                 id="dev.gad.intellij.settings.doc" displayName="Documentation"/>
+        <applicationConfigurable parentId="dev.gad.intellij.settings"
                                  instance="dev.gad.intellij.settings.GadAboutConfigurable"
                                  id="dev.gad.intellij.settings.about" displayName="About"/>
 
