@@ -44,6 +44,14 @@
         <completion.contributor language="Gad"
                                 implementationClass="dev.gad.intellij.lang.GadCompletionContributor"/>
 
+        <!-- Structure/Outline view via the `gad symbols` language service. Gad PSI
+             is plain text (language TEXT), so register there and for Gad; the
+             factory filters to Gad files, leaving other plain-text files alone. -->
+        <lang.psiStructureViewFactory language="TEXT"
+                                      implementationClass="dev.gad.intellij.lang.GadStructureViewFactory"/>
+        <lang.psiStructureViewFactory language="Gad"
+                                      implementationClass="dev.gad.intellij.lang.GadStructureViewFactory"/>
+
         <applicationService serviceImplementation="dev.gad.intellij.settings.GadSettings"/>
         <!-- Settings > Build, Execution, Deployment > Gad, with three child pages. -->
         <applicationConfigurable parentId="build"
