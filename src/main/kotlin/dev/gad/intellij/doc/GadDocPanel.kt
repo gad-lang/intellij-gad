@@ -12,10 +12,14 @@ import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.editor.Document
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.FileEditorManager
+import com.intellij.openapi.fileEditor.FileEditorManagerEvent
+import com.intellij.openapi.fileEditor.FileEditorManagerListener
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.SimpleToolWindowPanel
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.openapi.wm.ToolWindowManager
+import com.intellij.openapi.wm.ex.ToolWindowManagerListener
 import com.intellij.ui.jcef.JBCefApp
 import com.intellij.ui.jcef.JBCefBrowser
 import com.intellij.util.ui.UIUtil
@@ -31,19 +35,51 @@ import javax.swing.JScrollPane
  * `gad doc -name <file> -html -` and shows the rendered HTML (JCEF when
  * available, else a basic Swing HTML pane) — without writing any file.
  *
- * Rendering is ON DEMAND via the toolbar Refresh button (and once when the panel
- * is created), NOT on a timer: a continuous refresh loop drove the JCEF browser
- * on every keystroke and could freeze the whole machine.
+ * Rendering is EVENT-DRIVEN, never on a timer: the toolbar Refresh button, once
+ * when the panel is created, and automatically when the user opens or focuses a
+ * DIFFERENT Gad file (a selection change) or reopens this panel. It deliberately
+ * does NOT re-render on every keystroke — a continuous refresh loop once drove the
+ * JCEF browser per keystroke and could freeze the whole machine — and it skips
+ * work while the panel is hidden or when the file is already the one shown.
  */
 class GadDocPanel(private val project: Project, parent: Disposable) {
 
     private val browser: JBCefBrowser? = if (JBCefApp.isSupported()) JBCefBrowser() else null
     private val fallback = JEditorPane("text/html", "").apply { isEditable = false }
 
+    /** Path of the file currently rendered, so a repeat selection is a no-op. */
+    private var lastRenderedPath: String? = null
+
+    /** Last-seen visibility of the Gad Doc tool window, to fire on show only. */
+    private var wasVisible = false
+
     val component: JComponent
 
     init {
         browser?.let { Disposer.register(parent, it) }
+
+        // Auto-refresh is driven by IDE events (never a timer). Both are routed
+        // through onFileSelected, which gates on panel visibility and dedupes by
+        // file path so a switch back-and-forth or a hidden panel spawns nothing.
+        val bus = project.messageBus.connect(parent)
+        bus.subscribe(
+            FileEditorManagerListener.FILE_EDITOR_MANAGER,
+            object : FileEditorManagerListener {
+                override fun selectionChanged(event: FileEditorManagerEvent) =
+                    onFileSelected(event.newFile)
+            },
+        )
+        bus.subscribe(
+            ToolWindowManagerListener.TOPIC,
+            object : ToolWindowManagerListener {
+                override fun stateChanged(manager: ToolWindowManager) {
+                    val visible = manager.getToolWindow(TOOL_WINDOW_ID)?.isVisible ?: false
+                    // On the panel becoming visible, sync it to the active file.
+                    if (visible && !wasVisible) onFileSelected(selectedGadFile())
+                    wasVisible = visible
+                }
+            },
+        )
 
         val panel = SimpleToolWindowPanel(true, true)
         val refresh = object : AnAction("Refresh", "Re-render this Gad file's documentation", AllIcons.Actions.Refresh) {
@@ -62,7 +98,8 @@ class GadDocPanel(private val project: Project, parent: Disposable) {
         refresh()
     }
 
-    /** Render the active Gad editor's current buffer, or show a hint. */
+    /** Manual refresh (toolbar ⟳): always re-render the active editor's current
+     *  buffer — it may have unsaved edits — or show a hint. */
     private fun refresh() {
         val editor = FileEditorManager.getInstance(project).selectedTextEditor
         val doc: Document? = editor?.document
@@ -74,8 +111,27 @@ class GadDocPanel(private val project: Project, parent: Disposable) {
         render(file, doc.text)
     }
 
+    /** The active editor's file, when it is a Gad file (else null). */
+    private fun selectedGadFile(): VirtualFile? {
+        val editor = FileEditorManager.getInstance(project).selectedTextEditor ?: return null
+        val file = FileDocumentManager.getInstance().getFile(editor.document) ?: return null
+        return if (GadFile.isGadFile(file)) file else null
+    }
+
+    /** Auto-refresh entry point (selection change / panel shown). Renders only a
+     *  Gad file, only while this panel is visible, and only when it differs from
+     *  what is already shown — so switching to a non-Gad tab keeps the last doc. */
+    private fun onFileSelected(file: VirtualFile?) {
+        if (file == null || !GadFile.isGadFile(file)) return
+        if (ToolWindowManager.getInstance(project).getToolWindow(TOOL_WINDOW_ID)?.isVisible != true) return
+        if (file.path == lastRenderedPath) return
+        val doc = FileDocumentManager.getInstance().getDocument(file) ?: return
+        render(file, doc.text)
+    }
+
     /** Run `gad doc` off the EDT, then load the HTML back on the EDT. */
     private fun render(file: VirtualFile, text: String) {
+        lastRenderedPath = file.path
         val base = project.basePath
         val rel = if (base != null && file.path.startsWith("$base/")) file.path.removePrefix("$base/") else file.name
         ApplicationManager.getApplication().executeOnPooledThread {
@@ -147,4 +203,9 @@ class GadDocPanel(private val project: Project, parent: Disposable) {
 
     private fun escape(s: String): String =
         s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+    companion object {
+        /** Tool-window id, matching the `id` in plugin.xml and [GadDocAction]. */
+        private const val TOOL_WINDOW_ID = "Gad Doc"
+    }
 }
