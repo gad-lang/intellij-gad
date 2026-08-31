@@ -140,6 +140,7 @@ class GadSymbolElement(
     private fun iconFor(kind: String): Icon = when (kind) {
         "class" -> AllIcons.Nodes.Class
         "mixin" -> AllIcons.Nodes.AbstractClass
+        "type" -> AllIcons.Nodes.Type
         "interface" -> AllIcons.Nodes.Interface
         "enum" -> AllIcons.Nodes.Enum
         "func", "met" -> AllIcons.Nodes.Function
