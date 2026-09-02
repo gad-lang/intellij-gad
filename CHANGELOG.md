@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.1-rc.3
+
+- **Syntax highlighting**: `class`, `mixin` and `interface` are highlighted as
+  keywords only in declaration position (`class [Name] {`, `mixin [Name] {`,
+  `interface {`/`[`/`Name {`). They are contextual keywords — plain identifiers
+  everywhere else — so using them as parameter names, selectors or dict keys
+  (`fn(class)`, `x.mixin`, `{interface: 1}`) no longer mis-highlights them.
+  (Shared `gad-textmate` grammar.)
+
 ## 0.1.1-rc.2
 
 Keeps the plugin in step with recent Gad language features.
