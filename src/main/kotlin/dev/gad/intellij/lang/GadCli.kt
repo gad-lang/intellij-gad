@@ -70,12 +70,23 @@ object GadCli {
                 }
             }.apply { isDaemon = true; start() }
 
-            val out = p.inputStream.use { it.readBytes().toString(StandardCharsets.UTF_8) }
+            // stdout is drained on its own thread too: reading it here would block
+            // until the process exits, so a hung `gad` (e.g. a parser loop) would
+            // never reach the timeout below and would pin the caller's read action
+            // — freezing the IDE's UI thread waiting for the write lock.
+            var out: String? = null
+            val stdout = Thread {
+                try {
+                    out = p.inputStream.use { it.readBytes().toString(StandardCharsets.UTF_8) }
+                } catch (_: Exception) {
+                }
+            }.apply { isDaemon = true; start() }
 
             if (!p.waitFor(TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
                 p.destroyForcibly()
                 return null
             }
+            stdout.join(500)
             stdin.join(500)
             stderr.join(500)
             if (p.exitValue() != 0) null else out
