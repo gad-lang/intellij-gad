@@ -23,7 +23,10 @@ import javax.swing.Icon
  * plain text, language TEXT), so the outline is produced by the `gad symbols`
  * language service: it returns a JSON tree of the file's declarations — const/var,
  * func, class, mixin, interface, enum, met, with a type's own members nested — and
- * each node navigates to the declaration's byte offset.
+ * each node navigates to the declaration's byte offset. A field's type, and a
+ * function's signature, are its detail (shown beside it); a field typed by a class
+ * or interface written in place lists its members under it, and a function of
+ * several signatures lists them ("overload") under its name.
  *
  * Registered for language TEXT (where Gad PSI actually lands) and Gad; the factory
  * filters to Gad files, so other plain-text files are unaffected.
@@ -150,6 +153,7 @@ class GadSymbolElement(
         "const" -> AllIcons.Nodes.Constant
         "var" -> AllIcons.Nodes.Variable
         "value" -> AllIcons.Nodes.Enum
+        "overload" -> AllIcons.Nodes.Lambda
         else -> AllIcons.Nodes.Tag
     }
 }
